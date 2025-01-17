@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instruction Details</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Instruction Details</h1>
+    <div id="instruction-details"></div>
+    <script>
+        async function fetchInstructionDetails() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const instructionId = urlParams.get('instructionId');
+
+            if (!instructionId) {
+                document.getElementById('instruction-details').innerHTML = 'Instruction ID not provided.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/instructions/${instructionId}`);
+                if (!response.ok) {
+                    document.getElementById('instruction-details').innerHTML = 'Failed to fetch instruction details.';
+                    return;
+                }
+                const instruction = await response.json();
+                document.getElementById('instruction-details').innerHTML = `
+                    <h2>Instruction ID: ${instruction.instruction_id}</h2>
+                    <p><strong>Instruction:</strong> ${instruction.instruction || 'N/A'}</p>
+                    <p><strong>Generated Instruction:</strong> <pre>${JSON.stringify(instruction.generated_instruction, null, 2)}</pre> </p>
+                    <p><strong>Status:</strong> ${instruction.status || 'N/A'}</p>
+                    <p><strong>Start Time:</strong> ${instruction.start_time ? new Date(instruction.start_time).toLocaleString() : 'N/A'}</p>
+                    <p><strong>Screenshot:</strong> ${instruction.screenshot_path ? `<a href="${instruction.screenshot_path}" target="_blank">View</a>` : 'No screenshot available'}</p>
+                `;
+            } catch (error) {
+                document.getElementById('instruction-details').innerHTML = 'Error fetching instruction details.';
+                console.error(error);
+            }
+        }
+
+        fetchInstructionDetails();
+    </script>
+</body>
+</html>

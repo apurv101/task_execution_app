@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Actions</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>All Actions</h1>
+    <div id="actions-list"></div>
+    <script>
+        async function fetchActions() {
+            const response = await fetch('/api/actions');
+            const actions = await response.json();
+            const container = document.getElementById('actions-list');
+            container.innerHTML = actions.map(action => `
+                <div>
+                    <h3><a href="action-details.html?actionId=${action.action_id}">Action ID: ${action.action_id}</a></h3>
+                    <p>Task: ${action.task || 'N/A'}</p>
+                    <p>Start Time: ${new Date(action.start_time).toLocaleString()}</p>
+                </div>
+            `).join('');
+        }
+        fetchActions();
+    </script>
+</body>
+</html>

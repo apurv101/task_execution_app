@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Instructions</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>All Instructions</h1>
+    <div id="instructions-list"></div>
+    <script>
+        async function fetchInstructions() {
+            const response = await fetch('/api/instructions');
+            const instructions = await response.json();
+            const container = document.getElementById('instructions-list');
+            container.innerHTML = instructions.map(inst => `
+                <div>
+                    <h3><a href="instruction-details.html?instructionId=${inst.instruction_id}">Instruction ID: ${inst.instruction_id}</a></h3>
+                    <p>Instruction: ${inst.instruction || 'N/A'}</p>
+                    <p>Start Time: ${new Date(inst.start_time).toLocaleString()}</p>
+                </div>
+            `).join('');
+        }
+        fetchInstructions();
+    </script>
+</body>
+</html>

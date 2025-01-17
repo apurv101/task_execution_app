@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Details</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Action Details</h1>
+    <div id="action-details"></div>
+    <script>
+        async function fetchActionDetails() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const actionId = urlParams.get('actionId');
+
+            if (!actionId) {
+                document.getElementById('action-details').innerHTML = 'Action ID not provided.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/actions/${actionId}`);
+                if (!response.ok) {
+                    document.getElementById('action-details').innerHTML = 'Failed to fetch action details.';
+                    return;
+                }
+                const action = await response.json();
+                document.getElementById('action-details').innerHTML = `
+                    <h2>Action ID: ${action.action_id}</h2>
+                    <p><strong>Task:</strong> ${action.task || 'N/A'}</p>
+                    <p><strong>Status:</strong> ${action.status || 'N/A'}</p>
+                    <p><strong>Start Time:</strong> ${action.start_time ? new Date(action.start_time).toLocaleString() : 'N/A'}</p>
+                    <p><strong>End Time:</strong> ${action.end_time ? new Date(action.end_time).toLocaleString() : 'In Progress'}</p>
+                    <p><strong>Screenshots and Plots:</strong></p>
+                    <ul>
+                        ${action.screenshot_path ? `<li>Screenshot: <a href="${action.screenshot_path}" target="_blank">View</a></li>` : ''}
+                        ${action.google_vision_plot ? `<li>Google Vision Plot: <a href="${action.google_vision_plot}" target="_blank">View</a></li>` : ''}
+                        ${action.yolo_plot ? `<li>YOLO Plot: <a href="${action.yolo_plot}" target="_blank">View</a></li>` : ''}
+                        ${action.yolo_icons_plot ? `<li>YOLO Icons Plot: <a href="${action.yolo_icons_plot}" target="_blank">View</a></li>` : ''}
+                        ${action.annotated_plot ? `<li>Annotated Plot: <a href="${action.annotated_plot}" target="_blank">View</a></li>` : ''}
+                    </ul>
+                    <p><strong>LLM Output:</strong> <pre>${JSON.stringify(action.llm_output, null, 2)}</pre></p>
+                    <p><strong>LLM Output Text:</strong> ${action.llm_output_text || 'N/A'}</p>
+                `;
+            } catch (error) {
+                document.getElementById('action-details').innerHTML = 'Error fetching action details.';
+                console.error(error);
+            }
+        }
+
+        fetchActionDetails();
+    </script>
+</body>
+</html>
