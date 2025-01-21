@@ -1,6 +1,7 @@
 const express = require("express");
 const { MongoClient } = require("mongodb");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const PORT = 3005;
@@ -228,7 +229,32 @@ app.get("/api/instructions/:instructionId/actions", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 
+// API endpoint to serve images using absolute path
+app.get('/api/image-path/*', (req, res) => {
+    try {
+        // Get the absolute path from the URL and decode it
+        const imagePath = decodeURIComponent(req.params[0]);
+        
+        // Check if file exists
+        if (!fs.existsSync(imagePath)) {
+            return res.status(404).json({ error: 'Image not found' });
+        }
 
+        // Determine content type based on file extension
+        const ext = path.extname(imagePath).toLowerCase();
+        let contentType = 'image/jpeg'; // default
+        if (ext === '.png') contentType = 'image/png';
+        else if (ext === '.gif') contentType = 'image/gif';
+        else if (ext === '.webp') contentType = 'image/webp';
+
+        // Stream the image file
+        res.setHeader('Content-Type', contentType);
+        fs.createReadStream(imagePath).pipe(res);
+    } catch (error) {
+        console.error('Error serving image:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 
 // Start the server
