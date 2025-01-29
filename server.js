@@ -43,6 +43,27 @@ app.get("/api/task/:taskId", async (req, res) => {
     }
 });
 
+// Endpoint to delete a task by task_id
+app.delete("/api/task/:taskId", async (req, res) => {
+    const taskId = req.params.taskId;
+
+    try {
+        await client.connect();
+        const db = client.db(dbName);
+
+        const result = await db.collection("tasks").deleteOne({ task_id: taskId });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Task not found" });
+        }
+
+        res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting task:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 // Endpoint to fetch instructions by task_id
 app.get("/api/instructions/:instructionId", async (req, res) => {
     const instructionId = req.params.instructionId;
@@ -77,6 +98,27 @@ app.get("/api/instructions/:instructionId", async (req, res) => {
         res.json(sanitizedInstruction);
     } catch (error) {
         console.error("Error fetching instructions:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// Endpoint to delete an instruction by instruction_id
+app.delete("/api/instructions/:instructionId", async (req, res) => {
+    const instructionId = req.params.instructionId;
+
+    try {
+        await client.connect();
+        const db = client.db(dbName);
+
+        const result = await db.collection("instructions").deleteOne({ instruction_id: instructionId });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Instruction not found" });
+        }
+
+        res.json({ message: "Instruction deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting instruction:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
@@ -121,6 +163,27 @@ app.get("/api/actions/:actionId", async (req, res) => {
         res.json(sanitizedAction);
     } catch (error) {
         console.error("Error fetching actions:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// Endpoint to delete an action by action_id
+app.delete("/api/actions/:actionId", async (req, res) => {
+    const actionId = req.params.actionId;
+
+    try {
+        await client.connect();
+        const db = client.db(dbName);
+
+        const result = await db.collection("actions").deleteOne({ action_id: actionId });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Action not found" });
+        }
+
+        res.json({ message: "Action deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting action:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
