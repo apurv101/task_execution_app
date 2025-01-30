@@ -13,13 +13,9 @@ const dbName = "aimyable";
 
 const imagesPath = '/Users/apoorvagarwal/Desktop/aimyable/backend-server/images';
 
-
-
 app.use(express.static(path.join(__dirname, "public")));
-
+app.use(express.json());  // Add middleware to parse JSON bodies
 app.use('/images', express.static(imagesPath));
-
-
 
 // Endpoint to fetch task details by task_id
 app.get("/api/task/:taskId", async (req, res) => {
@@ -82,7 +78,6 @@ app.get("/api/instructions/:instructionId", async (req, res) => {
         }
 
         // Create a sanitized version of the instruction object
-
         const sanitizedInstruction = {
             instruction_id: instruction.instruction_id,
             instruction: instruction.instruction,
@@ -91,8 +86,9 @@ app.get("/api/instructions/:instructionId", async (req, res) => {
             start_time: instruction.start_time,
             actions: instruction.actions,
             screenshot_path: instruction.screenshot_path,
-            notes : instruction.notes,
+            notes: instruction.notes,
             prompt: instruction.prompt,
+            validation: instruction.validation || null,
         };
 
         res.json(sanitizedInstruction);
@@ -123,8 +119,6 @@ app.delete("/api/instructions/:instructionId", async (req, res) => {
     }
 });
 
-
-
 // Endpoint to fetch actions by action_id
 app.get("/api/actions/:actionId", async (req, res) => {
     const actionId = req.params.actionId;
@@ -142,7 +136,7 @@ app.get("/api/actions/:actionId", async (req, res) => {
             return res.status(404).json({ error: "Action not found" });
         }
 
-        console.log(action.prompt)
+        // console.log(action.prompt)
 
         // Create a sanitized version of the action object
         const sanitizedAction = {
@@ -158,6 +152,7 @@ app.get("/api/actions/:actionId", async (req, res) => {
             annotated_plot: action.annotated_plot || null,
             llm_output: action.llm_output || null,
             prompt: action.prompt || null,
+            validation: action.validation || null,
         };
 
         res.json(sanitizedAction);
@@ -188,8 +183,6 @@ app.delete("/api/actions/:actionId", async (req, res) => {
     }
 });
 
-
-
 // Endpoint to fetch all tasks ordered by time
 app.get("/api/tasks", async (req, res) => {
     try {
@@ -206,8 +199,6 @@ app.get("/api/tasks", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-
-
 
 app.get("/api/tasks/:taskId/instructions", async (req, res) => {
     const taskId = req.params.taskId;
@@ -229,7 +220,6 @@ app.get("/api/tasks/:taskId/instructions", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-
 
 // Endpoint to fetch all instructions ordered by time
 app.get("/api/instructions", async (req, res) => {
@@ -265,7 +255,6 @@ app.get("/api/actions", async (req, res) => {
     }
 });
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // NEW ENDPOINT: Fetch actions by instruction_id
 // ─────────────────────────────────────────────────────────────────────────────
@@ -289,8 +278,83 @@ app.get("/api/instructions/:instructionId/actions", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-// ─────────────────────────────────────────────────────────────────────────────
 
+// Endpoint to update instruction validation
+app.post("/api/instructions/:instructionId/validation", async (req, res) => {
+    const instructionId = req.params.instructionId;
+    const validation = req.body;
+
+    // Validate request body
+    if (!validation || typeof validation.valid !== 'boolean' || typeof validation.validation_comments !== 'string') {
+        return res.status(400).json({ 
+            error: "Invalid request body. Expected: { valid: boolean, validation_comments: string }" 
+        });
+    }
+
+    try {
+        await client.connect();
+        const db = client.db(dbName);
+
+        const result = await db.collection("instructions").findOneAndUpdate(
+            { instruction_id: instructionId },
+            { $set: { validation: validation } },
+            { returnDocument: 'after' }
+        );
+
+        if (!result) {
+            return res.status(404).json({ error: "Instruction not found" });
+        }
+
+        res.json(result);
+    } catch (error) {
+        console.error("Error updating instruction validation:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// Endpoint to update action validation
+app.post("/api/actions/:actionId/validation", async (req, res) => {
+    console.log(`[${new Date().toISOString()}] POST /api/actions/${req.params.actionId}/validation`);
+    const actionId = req.params.actionId;
+    const validation = req.body;
+    
+    console.log('Request body:', JSON.stringify(validation, null, 2));
+
+    // Validate request body
+    if (!validation || typeof validation.valid !== 'boolean' || typeof validation.validation_comments !== 'string') {
+        console.error('Validation error: Invalid request body format');
+        return res.status(400).json({ 
+            error: "Invalid request body. Expected: { valid: boolean, validation_comments: string }" 
+        });
+    }
+
+    try {
+        await client.connect();
+        const db = client.db(dbName);
+
+        console.log(`Updating validation for action: ${actionId}`);
+        console.log('Update data:', JSON.stringify(validation, null, 2));
+
+        const result = await db.collection("actions").findOneAndUpdate(
+            { action_id: actionId },
+            { $set: { validation: validation } },
+            { returnDocument: 'after' }
+        );
+
+        if (!result) {
+            console.error(`Action not found: ${actionId}`);
+            return res.status(404).json({ error: "Action not found" });
+        }
+
+        console.log('Action validation updated successfully');
+        
+        res.json(result);
+    } catch (error) {
+        console.error("Error updating action validation:", error);
+        console.error("Stack trace:", error.stack);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 
 // API endpoint to serve images using absolute path
 app.get('/api/image-path/*', (req, res) => {
@@ -318,7 +382,6 @@ app.get('/api/image-path/*', (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
 
 // Start the server
 app.listen(PORT, () => {
