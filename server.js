@@ -60,7 +60,7 @@ app.delete("/api/task/:taskId", async (req, res) => {
     }
 });
 
-// Endpoint to fetch instructions by task_id
+// Endpoint to fetch instructions by instruction_id
 app.get("/api/instructions/:instructionId", async (req, res) => {
     const instructionId = req.params.instructionId;
 
@@ -68,7 +68,7 @@ app.get("/api/instructions/:instructionId", async (req, res) => {
         await client.connect();
         const db = client.db(dbName);
 
-        // Fetch instructions for the given task_id
+        // Fetch instructions by instruction_id
         const instruction = await db
             .collection("instructions")
             .findOne({ instruction_id: instructionId });
@@ -77,21 +77,7 @@ app.get("/api/instructions/:instructionId", async (req, res) => {
             return res.status(404).json({ error: "Instruction not found" });
         }
 
-        // Create a sanitized version of the instruction object
-        const sanitizedInstruction = {
-            instruction_id: instruction.instruction_id,
-            instruction: instruction.instruction,
-            generated_instruction: instruction.generated_instruction,
-            status: instruction.status,
-            start_time: instruction.start_time,
-            actions: instruction.actions,
-            screenshot_path: instruction.screenshot_path,
-            notes: instruction.notes,
-            prompt: instruction.prompt,
-            validation: instruction.validation || null,
-        };
-
-        res.json(sanitizedInstruction);
+        res.json(instruction);
     } catch (error) {
         console.error("Error fetching instructions:", error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -136,26 +122,7 @@ app.get("/api/actions/:actionId", async (req, res) => {
             return res.status(404).json({ error: "Action not found" });
         }
 
-        // console.log(action.prompt)
-
-        // Create a sanitized version of the action object
-        const sanitizedAction = {
-            action_id: action.action_id,
-            task: action.task || "N/A",
-            status: action.status || "N/A",
-            start_time: action.start_time || null,
-            end_time: action.end_time || null,
-            screenshot_path: action.screenshot_path || null,
-            google_vision_plot: action.google_vision_plot || null,
-            yolo_plot: action.yolo_plot || null,
-            yolo_icons_plot: action.yolo_icons_plot || null,
-            annotated_plot: action.annotated_plot || null,
-            llm_output: action.llm_output || null,
-            prompt: action.prompt || null,
-            validation: action.validation || null,
-        };
-
-        res.json(sanitizedAction);
+        res.json(action);
     } catch (error) {
         console.error("Error fetching actions:", error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -183,7 +150,7 @@ app.delete("/api/actions/:actionId", async (req, res) => {
     }
 });
 
-// Endpoint to fetch all tasks ordered by time
+// Endpoint to fetch all tasks ordered by hierarchy_level
 app.get("/api/tasks", async (req, res) => {
     try {
         await client.connect();
@@ -191,7 +158,7 @@ app.get("/api/tasks", async (req, res) => {
         const tasks = await db
             .collection("tasks")
             .find()
-            .sort({ start_time: -1 }) // Sort by start_time in descending order
+            .sort({ hierarchy_level: 1 }) // Sort by hierarchy_level in ascending order
             .toArray();
         res.json(tasks);
     } catch (error) {
@@ -200,6 +167,7 @@ app.get("/api/tasks", async (req, res) => {
     }
 });
 
+// Endpoint to fetch instructions by parent task_id
 app.get("/api/tasks/:taskId/instructions", async (req, res) => {
     const taskId = req.params.taskId;
 
@@ -207,11 +175,11 @@ app.get("/api/tasks/:taskId/instructions", async (req, res) => {
         await client.connect();
         const db = client.db(dbName);
 
-        // Fetch instructions where "task_id" matches
+        // Fetch instructions where parent.task_id matches
         const instructions = await db
             .collection("instructions")
-            .find({ task_id: taskId })
-            .sort({ start_time: -1 }) // optional sort by most recent
+            .find({ "parent.task_id": taskId })
+            .sort({ sequence: 1 }) // Sort by sequence in ascending order
             .toArray();
 
         res.json(instructions);
@@ -221,7 +189,7 @@ app.get("/api/tasks/:taskId/instructions", async (req, res) => {
     }
 });
 
-// Endpoint to fetch all instructions ordered by time
+// Endpoint to fetch all instructions ordered by hierarchy_level and sequence
 app.get("/api/instructions", async (req, res) => {
     try {
         await client.connect();
@@ -229,7 +197,7 @@ app.get("/api/instructions", async (req, res) => {
         const instructions = await db
             .collection("instructions")
             .find()
-            .sort({ start_time: -1 }) // Sort by start_time in descending order
+            .sort({ hierarchy_level: 1, sequence: 1 }) // Sort by hierarchy and then sequence
             .toArray();
         res.json(instructions);
     } catch (error) {
@@ -238,7 +206,7 @@ app.get("/api/instructions", async (req, res) => {
     }
 });
 
-// Endpoint to fetch all actions ordered by time
+// Endpoint to fetch all actions ordered by hierarchy_level and sequence
 app.get("/api/actions", async (req, res) => {
     try {
         await client.connect();
@@ -246,7 +214,7 @@ app.get("/api/actions", async (req, res) => {
         const actions = await db
             .collection("actions")
             .find()
-            .sort({ start_time: -1 }) // Sort by start_time in descending order
+            .sort({ hierarchy_level: 1, sequence: 1 }) // Sort by hierarchy and then sequence
             .toArray();
         res.json(actions);
     } catch (error) {
@@ -255,9 +223,7 @@ app.get("/api/actions", async (req, res) => {
     }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NEW ENDPOINT: Fetch actions by instruction_id
-// ─────────────────────────────────────────────────────────────────────────────
+// Endpoint to fetch actions by parent instruction_id
 app.get("/api/instructions/:instructionId/actions", async (req, res) => {
     const instructionId = req.params.instructionId;
 
@@ -265,16 +231,16 @@ app.get("/api/instructions/:instructionId/actions", async (req, res) => {
         await client.connect();
         const db = client.db(dbName);
 
-        // Fetch actions where "instruction_id" matches
+        // Fetch actions where parent.instruction_id matches
         const actions = await db
             .collection("actions")
-            .find({ instruction_id: instructionId })
-            .sort({ start_time: -1 }) // optional sort by most recent
+            .find({ "parent.instruction_id": instructionId })
+            .sort({ sequence: 1 }) // Sort by sequence in ascending order
             .toArray();
 
         res.json(actions);
     } catch (error) {
-        console.error("Error fetching actions:", error);
+        console.error("Error fetching actions for instruction:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
